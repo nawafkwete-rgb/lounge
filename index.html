@@ -99,6 +99,9 @@ input:focus{outline:2px solid var(--felt);border-color:var(--felt)}
 .monthNav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .monthNav button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;width:40px;height:40px;font-size:18px;cursor:pointer}
 .monthNav .mtitle{font-family:'Cairo';font-weight:800;font-size:16px}
+.resetRow{display:flex;flex-direction:column;gap:8px}
+.resetRow .btn{width:100%}
+.warnbox{background:rgba(232,93,93,.12);border:1px solid var(--danger);border-radius:10px;padding:10px;font-size:13px;color:var(--danger);margin-bottom:12px}
 
 .toast{position:fixed;top:14px;right:50%;transform:translateX(50%);background:var(--felt);color:#08130D;padding:10px 18px;border-radius:30px;font-weight:700;font-size:14px;z-index:400;display:none;max-width:90%}
 .toast.show{display:block}
@@ -170,6 +173,15 @@ input:focus{outline:2px solid var(--felt);border-color:var(--felt)}
     </div>
     <div class="section"><h2>📈 ملخص الشهر</h2><div id="monthSummary"><div class="spin">جاري التحميل...</div></div></div>
     <div class="section"><h2>📅 أيام الشهر</h2><div id="monthDays"></div></div>
+    <div class="section">
+      <h2>♻️ تصفير العرض</h2>
+      <div class="info" style="color:var(--muted);font-size:13px;margin-bottom:10px">التصفير بيخفي الأرقام القديمة من العرض ويبلّش من صفر — البيانات بتبقى محفوظة ومأرشفة، ما بتنمسح.</div>
+      <div class="resetRow">
+        <button class="btn ghost" onclick="askReset('daily')">تصفير اليومي</button>
+        <button class="btn ghost" onclick="askReset('weekly')">تصفير الأسبوعي</button>
+        <button class="btn ghost" onclick="askReset('monthly')">تصفير الشهري</button>
+      </div>
+    </div>
   </div>
 
   <div id="tab-settings" class="hidden">
@@ -202,6 +214,14 @@ input:focus{outline:2px solid var(--felt);border-color:var(--felt)}
       <div class="frow">
         <input id="myNewPin" type="number" inputmode="numeric" placeholder="رقمك السري الجديد">
         <button class="btn ghost" onclick="changeMyPin()">تغيير رقمي</button>
+      </div>
+    </div>
+    <div class="section">
+      <h2>♻️ كلمة سر التصفير</h2>
+      <div class="info" style="color:var(--muted);font-size:13px;margin-bottom:8px">كلمة سر منفصلة عن رقم الدخول، بتنطلب وقت تصفير أي عرض. الافتراضية 0000 — غيّرها.</div>
+      <div class="frow">
+        <input id="newResetPass" type="password" inputmode="numeric" placeholder="كلمة سر التصفير الجديدة">
+        <button class="btn ghost" onclick="changeResetPass()">حفظ</button>
       </div>
     </div>
   </div>
@@ -250,6 +270,21 @@ input:focus{outline:2px solid var(--felt);border-color:var(--felt)}
   </div>
 </div>
 
+<div class="overlay" id="resetOverlay">
+  <div class="modal">
+    <h3 id="resetTitle">تصفير العرض</h3>
+    <div class="warnbox" id="resetWarn"></div>
+    <label>كلمة سر التصفير</label>
+    <input id="resetPass" type="password" inputmode="numeric" placeholder="••••">
+    <label>للتأكيد اكتب كلمة <b>تصفير</b></label>
+    <input id="resetConfirm" type="text" placeholder="تصفير">
+    <div class="actions">
+      <button class="btn ghost" onclick="hideReset()">رجوع</button>
+      <button class="btn red" onclick="confirmReset()">تأكيد التصفير</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -283,6 +318,7 @@ let openOrdersBySession = {};
 let todaySessions = [], todayOrders = [], todayExpenses = [];
 let currency = 'ل.س';
 let reportMonth = new Date();
+let resetPoints = { daily:null, weekly:null, monthly:null };
 
 const fmtNum = n => new Intl.NumberFormat('ar-SY').format(Math.round(n));
 const fmtMoney = n => fmtNum(n) + ' ' + currency;
@@ -300,6 +336,27 @@ function monthRange(d){
   const s = new Date(d.getFullYear(), d.getMonth(), 1);
   const e = new Date(d.getFullYear(), d.getMonth()+1, 1);
   return [s.toISOString(), e.toISOString()];
+}
+function weekStart(d){
+  // بداية الأسبوع السبت (متعارف عليه بسوريا)
+  const x = new Date(d); x.setHours(0,0,0,0);
+  const day = x.getDay(); // 0 أحد .. 6 سبت
+  const diff = (day + 1) % 7; // كم يوم رجعنا للسبت
+  x.setDate(x.getDate() - diff);
+  return x;
+}
+// الحد الأدنى الفعلي لعرض نطاق معيّن = الأحدث بين بداية الفترة الطبيعية وآخر تصفير
+function effStart(naturalStartISO, scope){
+  const rp = resetPoints[scope];
+  if(rp && new Date(rp) > new Date(naturalStartISO)) return rp;
+  return naturalStartISO;
+}
+async function loadResetPoints(){
+  try{
+    const rows = await db('lounge_resets?select=scope,reset_at&order=reset_at.desc');
+    resetPoints = { daily:null, weekly:null, monthly:null };
+    (rows||[]).forEach(r=>{ if(!resetPoints[r.scope]) resetPoints[r.scope] = r.reset_at; });
+  }catch(e){}
 }
 
 let selStaff = null;
@@ -353,7 +410,9 @@ async function refreshAll(){
     ]);
     devices = ds; products = ps; openSessions = os;
 
-    const [ts,te] = dayRange(new Date());
+    await loadResetPoints();
+    const [td0,te] = dayRange(new Date());
+    const ts = effStart(td0, 'daily');
     const [cs, co, ce] = await Promise.all([
       db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+ts+'&end_at=lt.'+te+'&order=end_at.desc'),
       db('lounge_orders?select=*&created_at=gte.'+ts+'&created_at=lt.'+te+'&order=created_at.desc'),
@@ -629,11 +688,16 @@ async function renderReports(){
   document.getElementById('monthSummary').innerHTML = '<div class="spin">جاري التحميل...</div>';
   document.getElementById('monthDays').innerHTML = '';
   const mr = monthRange(reportMonth);
+  // نطبّق تصفير الشهري فقط لو التصفير واقع ضمن الشهر المعروض
+  let mLow = mr[0];
+  if(resetPoints.monthly && new Date(resetPoints.monthly) > new Date(mr[0]) && new Date(resetPoints.monthly) < new Date(mr[1])){
+    mLow = resetPoints.monthly;
+  }
   try{
     const [ss, oo, ee] = await Promise.all([
-      db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+mr[0]+'&end_at=lt.'+mr[1]),
-      db('lounge_orders?select=*&created_at=gte.'+mr[0]+'&created_at=lt.'+mr[1]),
-      db('lounge_expenses?select=*&created_at=gte.'+mr[0]+'&created_at=lt.'+mr[1])
+      db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+mLow+'&end_at=lt.'+mr[1]),
+      db('lounge_orders?select=*&created_at=gte.'+mLow+'&created_at=lt.'+mr[1]),
+      db('lounge_expenses?select=*&created_at=gte.'+mLow+'&created_at=lt.'+mr[1])
     ]);
     const t = calcDay(ss, oo, ee);
     let html = '';
@@ -644,6 +708,26 @@ async function renderReports(){
     html += '<div class="row"><div><b>صافي الشهر</b></div><div class="amt" style="color:var(--money)">'+fmtMoney(t.net)+'</div></div>';
     html += '<div class="row"><div>عدد الجلسات</div><div class="amt">'+fmtNum(ss.length)+'</div></div>';
     document.getElementById('monthSummary').innerHTML = html;
+
+    // صافي الأسبوع الحالي (يحترم تصفير الأسبوعي) — يظهر فقط عند عرض الشهر الحالي
+    try{
+      const now = new Date();
+      if(reportMonth.getFullYear()===now.getFullYear() && reportMonth.getMonth()===now.getMonth()){
+        let wLow = weekStart(now).toISOString();
+        if(resetPoints.weekly && new Date(resetPoints.weekly) > new Date(wLow)) wLow = resetPoints.weekly;
+        const wHigh = new Date().toISOString();
+        const [wss, woo, wee] = await Promise.all([
+          db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+wLow+'&end_at=lt.'+wHigh),
+          db('lounge_orders?select=*&created_at=gte.'+wLow+'&created_at=lt.'+wHigh),
+          db('lounge_expenses?select=*&created_at=gte.'+wLow+'&created_at=lt.'+wHigh)
+        ]);
+        const wt = calcDay(wss, woo, wee);
+        const wk = document.createElement('div');
+        wk.className='row';
+        wk.innerHTML = '<div><b>صافي الأسبوع الحالي</b></div><div class="amt" style="color:var(--money)">'+fmtMoney(wt.net)+'</div>';
+        document.getElementById('monthSummary').appendChild(wk);
+      }
+    }catch(e){}
 
     const days = {};
     const dkey = ts => { const d=new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
@@ -745,6 +829,46 @@ async function changeMyPin(){
     document.getElementById('myNewPin').value='';
     toast('✅ تغيّر رقمك السري');
   }catch(e){ toast('⚠️ خطأ', true); }
+}
+async function changeResetPass(){
+  const p = document.getElementById('newResetPass').value.trim();
+  if(!p || p.length<4){ toast('كلمة السر لازم 4 خانات عالأقل', true); return; }
+  try{
+    await db('lounge_settings?key=eq.reset_password','PATCH',{value:p});
+    document.getElementById('newResetPass').value='';
+    toast('✅ تغيّرت كلمة سر التصفير');
+  }catch(e){ toast('⚠️ خطأ', true); }
+}
+
+/* ===== التصفير (لصاحب المحل فقط) ===== */
+let resetScope = null;
+const scopeName = { daily:'اليومي', weekly:'الأسبوعي', monthly:'الشهري' };
+function askReset(scope){
+  if(me.role!=='owner'){ toast('صاحب المحل فقط', true); return; }
+  resetScope = scope;
+  document.getElementById('resetTitle').textContent = 'تصفير العرض ' + scopeName[scope];
+  document.getElementById('resetWarn').innerHTML =
+    '⚠️ رح يتصفّر عرض <b>'+scopeName[scope]+'</b> ويبلّش من صفر. البيانات القديمة بتنحفظ مأرشفة وما بتنمسح، بس ما رح تظهر بالأرقام الحالية.';
+  document.getElementById('resetPass').value = '';
+  document.getElementById('resetConfirm').value = '';
+  document.getElementById('resetOverlay').classList.add('show');
+}
+function hideReset(){ document.getElementById('resetOverlay').classList.remove('show'); resetScope=null; }
+async function confirmReset(){
+  if(!resetScope) return;
+  const pass = document.getElementById('resetPass').value.trim();
+  const conf = document.getElementById('resetConfirm').value.trim();
+  if(conf !== 'تصفير'){ toast('اكتب كلمة «تصفير» للتأكيد', true); return; }
+  try{
+    const rows = await db('lounge_settings?select=value&key=eq.reset_password');
+    const real = rows && rows[0] ? rows[0].value : '0000';
+    if(pass !== real){ toast('❌ كلمة سر التصفير غلط', true); return; }
+    await db('lounge_resets','POST',{ scope:resetScope, by_staff:me.name });
+    hideReset();
+    toast('♻️ انصفّر العرض ' + scopeName[resetScope]);
+    await refreshAll();
+    if(document.getElementById('tab-reports') && !document.getElementById('tab-reports').classList.contains('hidden')) renderReports();
+  }catch(e){ toast('⚠️ خطأ، جرب مرة تانية', true); }
 }
 
 function showTab(name){
