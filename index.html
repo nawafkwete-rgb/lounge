@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام الصالة</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1319; --panel:#171D26; --panel2:#1E2632; --line:#28323F;
+  --felt:#22B573; --felt-dim:#15503A; --money:#F2B94B; --danger:#E85D5D; --smoke:#9B7EDE;
+  --text:#E9EDF2; --muted:#8B96A3; --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Tajawal',sans-serif;min-height:100vh;padding-bottom:90px}
+h1,h2,h3{font-family:'Cairo',sans-serif}
+header{padding:16px 16px 8px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:19px;font-weight:800}
+header .who{color:var(--muted);font-size:12px;text-align:left}
+header .who b{color:var(--felt)}
+.container{padding:0 12px;max-width:760px;margin:0 auto}
+
+#loginScreen{position:fixed;inset:0;background:var(--bg);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px}
+.loginBox{width:100%;max-width:340px;text-align:center}
+.loginBox h1{font-size:26px;margin-bottom:4px}
+.loginBox .sub{color:var(--muted);font-size:13px;margin-bottom:22px}
+.staffBtns{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.staffBtns button{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:13px;font-family:'Tajawal';font-size:15px;font-weight:700;cursor:pointer}
+.staffBtns button.sel{border-color:var(--felt);color:var(--felt)}
+#pinRow{display:none}
+#pinRow.show{display:block}
+.pinInput{text-align:center;font-size:22px;letter-spacing:8px;font-family:'Cairo'}
+
+.tabs{position:fixed;bottom:0;right:0;left:0;background:var(--panel);border-top:1px solid var(--line);display:flex;z-index:50}
+.tabs button{flex:1;background:none;border:none;color:var(--muted);padding:10px 2px 12px;font-family:'Tajawal';font-size:12px;font-weight:700;cursor:pointer}
+.tabs button.active{color:var(--felt)}
+.tabs button .ic{display:block;font-size:19px;margin-bottom:2px}
+
+.strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 14px}
+.strip .box{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px;text-align:center}
+.strip .box .lbl{font-size:11px;color:var(--muted)}
+.strip .box .val{font-size:18px;font-weight:800;font-family:'Cairo'}
+.val.green{color:var(--felt)} .val.gold{color:var(--money)} .val.red{color:var(--danger)}
+
+.gtitle{font-size:13px;color:var(--muted);font-weight:700;margin:14px 2px 8px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;position:relative;transition:border-color .3s}
+.card.busy{border-color:var(--felt);box-shadow:0 0 14px rgba(34,181,115,.18);background:linear-gradient(180deg,rgba(34,181,115,.07),var(--panel))}
+.card .name{font-weight:700;font-size:15px}
+.card .rate{color:var(--muted);font-size:12px;margin-top:2px}
+.card .timer{font-family:'Cairo';font-size:22px;font-weight:800;margin:8px 0 2px;letter-spacing:1px}
+.card.busy .timer{color:var(--felt)}
+.card .amount{font-size:13px;color:var(--money);font-weight:700;min-height:18px}
+.card .orders-tag{font-size:11px;color:var(--smoke);min-height:15px}
+.card button{width:100%;margin-top:8px;padding:9px;border:none;border-radius:10px;font-family:'Tajawal';font-weight:700;font-size:14px;cursor:pointer}
+.btn-start{background:var(--felt);color:#08130D}
+.btn-stop{background:var(--danger);color:#fff}
+.badge{position:absolute;top:10px;left:10px;font-size:10px;padding:2px 8px;border-radius:20px;background:var(--panel2);color:var(--muted)}
+.card.busy .badge{background:var(--felt-dim);color:var(--felt)}
+
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.pbtn{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;color:var(--text);font-family:'Tajawal'}
+.pbtn:active{border-color:var(--smoke)}
+.pbtn .pn{font-weight:700;font-size:14px}
+.pbtn .pp{color:var(--money);font-size:12px;font-family:'Cairo';font-weight:800;margin-top:4px}
+
+.section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.section h2{font-size:15px;margin-bottom:10px;font-weight:800}
+.row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;gap:8px}
+.row:last-child{border-bottom:none}
+.row .sub{color:var(--muted);font-size:12px}
+.row .amt{font-family:'Cairo';font-weight:800;white-space:nowrap}
+.empty{color:var(--muted);text-align:center;padding:18px 0;font-size:13px}
+
+input,select{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:9px 10px;font-family:'Tajawal';font-size:14px;width:100%}
+input:focus{outline:2px solid var(--felt);border-color:var(--felt)}
+.frow{display:flex;gap:8px;margin-top:8px}
+.frow input{flex:1}
+.btn{background:var(--felt);color:#08130D;border:none;border-radius:10px;padding:9px 16px;font-family:'Tajawal';font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+.btn.ghost{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.btn.red{background:var(--danger);color:#fff}
+.mini{background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px;padding:4px}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.overlay.show{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;width:100%;max-width:400px;max-height:85vh;overflow-y:auto}
+.modal h3{font-size:16px;margin-bottom:6px}
+.modal .info{color:var(--muted);font-size:13px;margin-bottom:12px}
+.modal label{font-size:12px;color:var(--muted);display:block;margin:10px 0 4px}
+.modal .actions{display:flex;gap:8px;margin-top:16px}
+.modal .actions .btn{flex:1}
+.qty{display:flex;align-items:center;gap:14px;justify-content:center;margin:6px 0}
+.qty button{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-size:22px;cursor:pointer}
+.qty .qv{font-family:'Cairo';font-size:26px;font-weight:800;min-width:40px;text-align:center}
+.devPick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.devPick button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:11px 6px;font-family:'Tajawal';font-weight:700;font-size:13px;cursor:pointer}
+.devPick button:active{border-color:var(--felt)}
+
+.monthNav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.monthNav button{background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:10px;width:40px;height:40px;font-size:18px;cursor:pointer}
+.monthNav .mtitle{font-family:'Cairo';font-weight:800;font-size:16px}
+
+.toast{position:fixed;top:14px;right:50%;transform:translateX(50%);background:var(--felt);color:#08130D;padding:10px 18px;border-radius:30px;font-weight:700;font-size:14px;z-index:400;display:none;max-width:90%}
+.toast.show{display:block}
+.toast.err{background:var(--danger);color:#fff}
+.hidden{display:none!important}
+.spin{color:var(--muted);text-align:center;padding:30px 0}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="loginBox">
+    <h1>🎱 نظام الصالة</h1>
+    <div class="sub">اختار اسمك وأدخل الرقم السري</div>
+    <div class="staffBtns" id="staffBtns"><div class="spin">جاري التحميل...</div></div>
+    <div id="pinRow">
+      <input class="pinInput" id="pinInput" type="password" inputmode="numeric" maxlength="6" placeholder="••••">
+      <div style="margin-top:12px"><button class="btn" style="width:100%" onclick="tryLogin()">دخول</button></div>
+    </div>
+  </div>
+</div>
+
+<header>
+  <h1>🎱 نظام الصالة</h1>
+  <div class="who"><span id="todayDate"></span><br><b id="whoName"></b></div>
+</header>
+
+<div class="container">
+
+  <div class="strip">
+    <div class="box"><div class="lbl">دخل اليوم</div><div class="val green" id="sumIncome">0</div></div>
+    <div class="box"><div class="lbl">المصاريف</div><div class="val red" id="sumExpense">0</div></div>
+    <div class="box"><div class="lbl">الصافي</div><div class="val gold" id="sumNet">0</div></div>
+  </div>
+
+  <div id="tab-devices"><div id="deviceGroups"><div class="spin">جاري التحميل...</div></div></div>
+
+  <div id="tab-sales" class="hidden">
+    <div class="section">
+      <h2>💨🍹 بيع سريع — اكبس عالصنف</h2>
+      <div class="pgrid" id="productGrid"></div>
+    </div>
+    <div class="section">
+      <h2>🧾 مبيعات اليوم</h2>
+      <div id="salesList"><div class="empty">ما في مبيعات</div></div>
+    </div>
+  </div>
+
+  <div id="tab-daily" class="hidden">
+    <div class="section"><h2>📊 ملخص اليوم</h2><div id="dailyBreakdown"></div></div>
+    <div class="section"><h2>⏱️ جلسات اليوم</h2><div id="sessionsList"><div class="empty">ما في جلسات</div></div></div>
+    <div class="section">
+      <h2>🧾 المصاريف</h2>
+      <div id="expensesList"><div class="empty">ما في مصاريف</div></div>
+      <div class="frow">
+        <input id="expName" placeholder="البيان (فحم، تنباك، كهربا...)">
+        <input id="expAmount" type="number" inputmode="numeric" placeholder="المبلغ" style="max-width:110px">
+        <button class="btn" onclick="addExpense()">إضافة</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-reports" class="hidden">
+    <div class="monthNav">
+      <button onclick="chgMonth(1)">‹</button>
+      <div class="mtitle" id="monthTitle"></div>
+      <button onclick="chgMonth(-1)">›</button>
+    </div>
+    <div class="section"><h2>📈 ملخص الشهر</h2><div id="monthSummary"><div class="spin">جاري التحميل...</div></div></div>
+    <div class="section"><h2>📅 أيام الشهر</h2><div id="monthDays"></div></div>
+  </div>
+
+  <div id="tab-settings" class="hidden">
+    <div class="section">
+      <h2>🖥️ الأجهزة وأسعار الساعة</h2>
+      <div id="deviceSettings"></div>
+      <div class="frow">
+        <input id="newDevName" placeholder="اسم الجهاز">
+        <input id="newDevRate" type="number" inputmode="numeric" placeholder="سعر الساعة" style="max-width:110px">
+        <button class="btn" onclick="addDevice()">إضافة</button>
+      </div>
+    </div>
+    <div class="section">
+      <h2>💨 الأصناف</h2>
+      <div id="productSettings"></div>
+      <div class="frow">
+        <input id="newProdName" placeholder="اسم الصنف">
+        <input id="newProdPrice" type="number" inputmode="numeric" placeholder="السعر" style="max-width:110px">
+        <button class="btn" onclick="addProduct()">إضافة</button>
+      </div>
+    </div>
+    <div class="section">
+      <h2>👥 الموظفين</h2>
+      <div id="staffSettings"></div>
+      <div class="frow">
+        <input id="newStaffName" placeholder="اسم الموظف">
+        <input id="newStaffPin" type="number" inputmode="numeric" placeholder="رقم سري" style="max-width:110px">
+        <button class="btn" onclick="addStaff()">إضافة</button>
+      </div>
+      <div class="frow">
+        <input id="myNewPin" type="number" inputmode="numeric" placeholder="رقمك السري الجديد">
+        <button class="btn ghost" onclick="changeMyPin()">تغيير رقمي</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav class="tabs">
+  <button id="tb-devices" class="active" onclick="showTab('devices')"><span class="ic">🎮</span>الأجهزة</button>
+  <button id="tb-sales" onclick="showTab('sales')"><span class="ic">💨</span>مبيعات</button>
+  <button id="tb-daily" onclick="showTab('daily')"><span class="ic">💰</span>اليومية</button>
+  <button id="tb-reports" class="ownerOnly hidden" onclick="showTab('reports')"><span class="ic">📈</span>تقارير</button>
+  <button id="tb-settings" class="ownerOnly hidden" onclick="showTab('settings')"><span class="ic">⚙️</span>إعدادات</button>
+</nav>
+
+<div class="overlay" id="closeOverlay">
+  <div class="modal">
+    <h3 id="closeTitle">إنهاء الجلسة</h3>
+    <div class="info" id="closeInfo"></div>
+    <div id="closeOrders"></div>
+    <label>المبلغ النهائي الكامل (وقت + طلبات — فيك تعدّله)</label>
+    <input id="closeAmount" type="number" inputmode="numeric">
+    <div class="actions">
+      <button class="btn red" onclick="cancelSession()">إلغاء الجلسة</button>
+      <button class="btn ghost" onclick="hideClose()">رجوع</button>
+      <button class="btn" onclick="confirmClose()">تأكيد وقبض</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="sellOverlay">
+  <div class="modal">
+    <h3 id="sellTitle">بيع</h3>
+    <div class="info" id="sellInfo"></div>
+    <label>العدد</label>
+    <div class="qty">
+      <button onclick="chgQty(-1)">−</button>
+      <span class="qv" id="qtyVal">1</span>
+      <button onclick="chgQty(1)">+</button>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" onclick="hideSell()">رجوع</button>
+      <button class="btn" onclick="sellCash()">💵 نقدي فوري</button>
+    </div>
+    <label>أو حطه على حساب جهاز مشغول:</label>
+    <div class="devPick" id="sellDevPick"><div class="empty">ما في أجهزة مشغولة</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL = 'https://zcnbhgasngdicmxbnqwj.supabase.co/rest/v1/';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjbmJoZ2FzbmdkaWNteGJucXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NjMwMjAsImV4cCI6MjA5NDQzOTAyMH0.46iX9jUxRPG4tp2tloiSi5NwgkE4Eat1WWYxlfShPd8';
+
+async function db(path, method='GET', body=null){
+  const opts = {
+    method,
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch(SB_URL + path, opts);
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error(t || res.status);
+  }
+  const txt = await res.text();
+  return txt ? JSON.parse(txt) : null;
+}
+
+let me = null;
+let staffList = [], devices = [], products = [];
+let openSessions = [];
+let openOrdersBySession = {};
+let todaySessions = [], todayOrders = [], todayExpenses = [];
+let currency = 'ل.س';
+let reportMonth = new Date();
+
+const fmtNum = n => new Intl.NumberFormat('ar-SY').format(Math.round(n));
+const fmtMoney = n => fmtNum(n) + ' ' + currency;
+function fmtDur(ms){
+  const s = Math.floor(ms/1000);
+  return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+}
+const fmtTime = ts => new Date(ts).toLocaleTimeString('ar-SY',{hour:'2-digit',minute:'2-digit'});
+function dayRange(d){
+  const s = new Date(d); s.setHours(0,0,0,0);
+  const e = new Date(s); e.setDate(e.getDate()+1);
+  return [s.toISOString(), e.toISOString()];
+}
+function monthRange(d){
+  const s = new Date(d.getFullYear(), d.getMonth(), 1);
+  const e = new Date(d.getFullYear(), d.getMonth()+1, 1);
+  return [s.toISOString(), e.toISOString()];
+}
+
+let selStaff = null;
+async function loadLogin(){
+  try{
+    staffList = await db('lounge_staff?select=id,name,role&active=eq.true&order=created_at');
+    const box = document.getElementById('staffBtns');
+    box.innerHTML = '';
+    staffList.forEach(s=>{
+      const b = document.createElement('button');
+      b.textContent = (s.role==='owner'?'👑 ':'') + s.name;
+      b.onclick = ()=>{
+        selStaff = s;
+        [...box.children].forEach(c=>c.classList.remove('sel'));
+        b.classList.add('sel');
+        document.getElementById('pinRow').classList.add('show');
+        document.getElementById('pinInput').focus();
+      };
+      box.appendChild(b);
+    });
+  }catch(e){
+    document.getElementById('staffBtns').innerHTML = '<div class="empty">⚠️ ما قدرت أوصل عالسيرفر — تأكد من النت</div>';
+  }
+}
+async function tryLogin(){
+  if(!selStaff) return;
+  const pin = document.getElementById('pinInput').value.trim();
+  if(!pin){ toast('أدخل الرقم السري', true); return; }
+  try{
+    const r = await db('lounge_staff?select=id,name,role&id=eq.'+selStaff.id+'&pin=eq.'+encodeURIComponent(pin)+'&active=eq.true');
+    if(r.length===0){ toast('❌ الرقم السري غلط', true); return; }
+    me = r[0];
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('whoName').textContent = (me.role==='owner'?'👑 ':'👤 ') + me.name;
+    if(me.role==='owner') document.querySelectorAll('.ownerOnly').forEach(el=>el.classList.remove('hidden'));
+    await refreshAll();
+    setInterval(tick, 1000);
+    setInterval(refreshAll, 15000);
+  }catch(e){ toast('⚠️ خطأ بالاتصال', true); }
+}
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && !me && selStaff) tryLogin();
+});
+
+async function refreshAll(){
+  try{
+    const [ds, ps, os] = await Promise.all([
+      db('lounge_devices?select=*&active=eq.true&order=sort'),
+      db('lounge_products?select=*&active=eq.true&order=sort'),
+      db('lounge_sessions?select=*&status=eq.open&order=start_at')
+    ]);
+    devices = ds; products = ps; openSessions = os;
+
+    const [ts,te] = dayRange(new Date());
+    const [cs, co, ce] = await Promise.all([
+      db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+ts+'&end_at=lt.'+te+'&order=end_at.desc'),
+      db('lounge_orders?select=*&created_at=gte.'+ts+'&created_at=lt.'+te+'&order=created_at.desc'),
+      db('lounge_expenses?select=*&created_at=gte.'+ts+'&created_at=lt.'+te+'&order=created_at.desc')
+    ]);
+    todaySessions = cs; todayOrders = co; todayExpenses = ce;
+
+    openOrdersBySession = {};
+    if(openSessions.length){
+      const ids = openSessions.map(s=>s.id).join(',');
+      const oo = await db('lounge_orders?select=*&session_id=in.('+ids+')');
+      oo.forEach(o=>{ (openOrdersBySession[o.session_id] = openOrdersBySession[o.session_id]||[]).push(o); });
+    }
+    renderDevices(); renderProducts(); renderSales(); renderDaily(); renderSummary();
+  }catch(e){ }
+}
+
+const sessionOfDevice = devId => openSessions.find(s=>s.device_id===devId);
+const sessionOrdersTotal = sid => (openOrdersBySession[sid]||[]).reduce((a,o)=>a+Number(o.total),0);
+const calcTime = (s) => Number(s.rate) * ((Date.now()-new Date(s.start_at).getTime())/3600000);
+
+function renderDevices(){
+  const wrap = document.getElementById('deviceGroups');
+  wrap.innerHTML = '';
+  const groups = {};
+  devices.forEach(d=>{ (groups[d.grp]=groups[d.grp]||[]).push(d); });
+  const icons = {'كمبيوتر':'🖥️','بلايستيشن':'🎮','بلياردو':'🎱','طاولة ورق':'🃏'};
+  for(const g in groups){
+    const busy = groups[g].filter(d=>sessionOfDevice(d.id)).length;
+    wrap.innerHTML += '<div class="gtitle">'+(icons[g]||'📌')+' '+g+' — مشغول '+fmtNum(busy)+' من '+fmtNum(groups[g].length)+'</div>';
+    const grid = document.createElement('div'); grid.className='grid';
+    groups[g].forEach(d=>{
+      const s = sessionOfDevice(d.id);
+      const card = document.createElement('div');
+      card.className = 'card' + (s?' busy':'');
+      const ordTotal = s ? sessionOrdersTotal(s.id) : 0;
+      card.innerHTML =
+        '<span class="badge">'+(s?'مشغول':'متاح')+'</span>'+
+        '<div class="name">'+d.name+'</div>'+
+        '<div class="rate">'+fmtMoney(d.rate)+' / ساعة</div>'+
+        '<div class="timer" id="timer-'+d.id+'">'+(s?fmtDur(Date.now()-new Date(s.start_at).getTime()):'00:00:00')+'</div>'+
+        '<div class="amount" id="amt-'+d.id+'">'+(s?fmtMoney(calcTime(s)):'')+'</div>'+
+        '<div class="orders-tag" id="ord-'+d.id+'">'+(s&&ordTotal?('+ طلبات '+fmtMoney(ordTotal)):'')+'</div>'+
+        '<button class="'+(s?'btn-stop':'btn-start')+'" onclick="'+(s?("openClose('"+s.id+"')"):("startSession('"+d.id+"')"))+'">'+(s?'إنهاء وقبض':'بدء')+'</button>';
+      grid.appendChild(card);
+    });
+    wrap.appendChild(grid);
+  }
+}
+
+function tick(){
+  openSessions.forEach(s=>{
+    const el = document.getElementById('timer-'+s.device_id);
+    const am = document.getElementById('amt-'+s.device_id);
+    if(el){
+      el.textContent = fmtDur(Date.now()-new Date(s.start_at).getTime());
+      am.textContent = fmtMoney(Math.round(calcTime(s)));
+    }
+  });
+}
+
+async function startSession(devId){
+  const d = devices.find(x=>x.id===devId);
+  if(sessionOfDevice(devId)) return;
+  try{
+    const r = await db('lounge_sessions','POST',{
+      device_id:d.id, device_name:d.name, grp:d.grp, rate:d.rate, opened_by:me.name
+    });
+    openSessions.push(r[0]);
+    renderDevices();
+    toast('▶️ بلّشت الجلسة — ' + d.name);
+  }catch(e){ toast('⚠️ خطأ، جرب مرة تانية', true); }
+}
+
+let closingId = null;
+function openClose(sid){
+  closingId = sid;
+  const s = openSessions.find(x=>x.id===sid);
+  const ms = Date.now()-new Date(s.start_at).getTime();
+  const timeAmt = Math.round(calcTime(s));
+  const ords = openOrdersBySession[sid]||[];
+  const ordTotal = ords.reduce((a,o)=>a+Number(o.total),0);
+  document.getElementById('closeTitle').textContent = 'إنهاء — ' + s.device_name;
+  document.getElementById('closeInfo').textContent = 'المدة '+fmtDur(ms)+' — وقت: '+fmtMoney(timeAmt)+(ordTotal?(' + طلبات: '+fmtMoney(ordTotal)):'');
+  document.getElementById('closeOrders').innerHTML = ords.map(o=>
+    '<div class="row"><div>'+o.product_name+' × '+fmtNum(o.qty)+'</div><div class="amt" style="color:var(--smoke)">'+fmtMoney(o.total)+'</div></div>'
+  ).join('');
+  document.getElementById('closeAmount').value = timeAmt + ordTotal;
+  document.getElementById('closeOverlay').classList.add('show');
+}
+function hideClose(){ document.getElementById('closeOverlay').classList.remove('show'); closingId=null; }
+
+async function confirmClose(){
+  if(!closingId) return;
+  const ordTotal = sessionOrdersTotal(closingId);
+  const total = Number(document.getElementById('closeAmount').value)||0;
+  try{
+    await db('lounge_sessions?id=eq.'+closingId,'PATCH',{
+      end_at:new Date().toISOString(), status:'closed',
+      time_amount: total-ordTotal, orders_amount: ordTotal, total_amount: total,
+      closed_by: me.name
+    });
+    hideClose();
+    toast('✅ انقبض ' + fmtMoney(total));
+    await refreshAll();
+  }catch(e){ toast('⚠️ خطأ، جرب مرة تانية', true); }
+}
+
+async function cancelSession(){
+  if(!closingId) return;
+  if(!confirm('أكيد بدك تلغي الجلسة بدون قبض؟ الطلبات المرتبطة فيها رح تنحذف كمان.')) return;
+  try{
+    await db('lounge_orders?session_id=eq.'+closingId,'DELETE');
+    await db('lounge_sessions?id=eq.'+closingId,'DELETE');
+    hideClose();
+    toast('🗑️ انلغت الجلسة');
+    await refreshAll();
+  }catch(e){ toast('⚠️ خطأ', true); }
+}
+
+function renderProducts(){
+  const grid = document.getElementById('productGrid');
+  grid.innerHTML = '';
+  products.forEach(p=>{
+    grid.innerHTML += '<button class="pbtn" onclick="openSell(\''+p.id+'\')"><div class="pn">'+p.name+'</div><div class="pp">'+fmtMoney(p.price)+'</div></button>';
+  });
+}
+
+let sellProd = null, sellQty = 1;
+function openSell(pid){
+  sellProd = products.find(p=>p.id===pid);
+  sellQty = 1;
+  document.getElementById('sellTitle').textContent = 'بيع — ' + sellProd.name;
+  updSell();
+  const pick = document.getElementById('sellDevPick');
+  if(openSessions.length===0) pick.innerHTML = '<div class="empty" style="grid-column:1/-1">ما في أجهزة مشغولة</div>';
+  else pick.innerHTML = openSessions.map(s=>'<button onclick="sellOnDevice(\''+s.id+'\')">🖥️ '+s.device_name+'</button>').join('');
+  document.getElementById('sellOverlay').classList.add('show');
+}
+function chgQty(d){ sellQty = Math.max(1, sellQty+d); updSell(); }
+function updSell(){
+  document.getElementById('qtyVal').textContent = fmtNum(sellQty);
+  document.getElementById('sellInfo').textContent = 'الإجمالي: ' + fmtMoney(sellProd.price*sellQty);
+}
+function hideSell(){ document.getElementById('sellOverlay').classList.remove('show'); sellProd=null; }
+
+async function sellCash(){
+  if(!sellProd) return;
+  try{
+    await db('lounge_orders','POST',{
+      product_name:sellProd.name, price:sellProd.price, qty:sellQty,
+      total:sellProd.price*sellQty, paid:true, staff:me.name
+    });
+    toast('✅ انباع نقدي — ' + sellProd.name);
+    hideSell();
+    await refreshAll();
+  }catch(e){ toast('⚠️ خطأ', true); }
+}
+async function sellOnDevice(sid){
+  if(!sellProd) return;
+  const s = openSessions.find(x=>x.id===sid);
+  try{
+    await db('lounge_orders','POST',{
+      session_id:sid, device_name:s.device_name,
+      product_name:sellProd.name, price:sellProd.price, qty:sellQty,
+      total:sellProd.price*sellQty, paid:false, staff:me.name
+    });
+    toast('✅ انضاف عحساب ' + s.device_name);
+    hideSell();
+    await refreshAll();
+  }catch(e){ toast('⚠️ خطأ', true); }
+}
+
+function renderSales(){
+  const el = document.getElementById('salesList');
+  if(todayOrders.length===0){ el.innerHTML='<div class="empty">ما في مبيعات</div>'; return; }
+  el.innerHTML = '';
+  todayOrders.forEach(o=>{
+    const where = o.device_name ? ('عحساب '+o.device_name) : 'نقدي';
+    const del = me.role==='owner' ? '<button class="mini" onclick="delOrder(\''+o.id+'\')" aria-label="حذف">✕</button>' : '';
+    el.innerHTML += '<div class="row">'+
+      '<div><div>'+o.product_name+' × '+fmtNum(o.qty)+'</div><div class="sub">'+fmtTime(o.created_at)+' — '+where+' — '+(o.staff||'')+'</div></div>'+
+      '<div style="display:flex;align-items:center;gap:6px"><span class="amt" style="color:var(--money)">'+fmtMoney(o.total)+'</span>'+del+'</div>'+
+    '</div>';
+  });
+}
+async function delOrder(id){
+  if(!confirm('حذف هالطلب؟')) return;
+  try{ await db('lounge_orders?id=eq.'+id,'DELETE'); await refreshAll(); }catch(e){ toast('⚠️ خطأ', true); }
+}
+
+function calcDay(sessions, orders, expenses){
+  const byGroup = {};
+  let timeTotal = 0;
+  sessions.forEach(s=>{
+    const t = Number(s.total_amount)-Number(s.orders_amount);
+    byGroup[s.grp||'أجهزة'] = (byGroup[s.grp||'أجهزة']||0)+t;
+    timeTotal += t;
+  });
+  const sessionOrders = sessions.reduce((a,s)=>a+Number(s.orders_amount),0);
+  const cashOrders = orders.filter(o=>!o.session_id).reduce((a,o)=>a+Number(o.total),0);
+  const ordersTotal = sessionOrders + cashOrders;
+  const income = timeTotal + ordersTotal;
+  const exp = expenses.reduce((a,e)=>a+Number(e.amount),0);
+  return {byGroup, timeTotal, ordersTotal, income, exp, net: income-exp};
+}
+
+function renderDaily(){
+  const t = calcDay(todaySessions, todayOrders, todayExpenses);
+  let bd = '';
+  for(const g in t.byGroup) bd += '<div class="row"><div>'+g+'</div><div class="amt" style="color:var(--felt)">'+fmtMoney(t.byGroup[g])+'</div></div>';
+  bd += '<div class="row"><div>أراكيل ومشروبات</div><div class="amt" style="color:var(--smoke)">'+fmtMoney(t.ordersTotal)+'</div></div>';
+  bd += '<div class="row"><div><b>إجمالي الدخل</b></div><div class="amt" style="color:var(--felt)">'+fmtMoney(t.income)+'</div></div>';
+  bd += '<div class="row"><div>المصاريف</div><div class="amt" style="color:var(--danger)">− '+fmtMoney(t.exp)+'</div></div>';
+  bd += '<div class="row"><div><b>الصافي</b></div><div class="amt" style="color:var(--money)">'+fmtMoney(t.net)+'</div></div>';
+  document.getElementById('dailyBreakdown').innerHTML = bd;
+
+  const sl = document.getElementById('sessionsList');
+  if(todaySessions.length===0) sl.innerHTML='<div class="empty">ما في جلسات</div>';
+  else{
+    sl.innerHTML='';
+    todaySessions.forEach(s=>{
+      const mins = Math.round((new Date(s.end_at)-new Date(s.start_at))/60000);
+      sl.innerHTML += '<div class="row">'+
+        '<div><div>'+s.device_name+'</div><div class="sub">'+fmtTime(s.start_at)+' ← '+fmtTime(s.end_at)+' ('+fmtNum(mins)+' د) — '+(s.closed_by||'')+'</div></div>'+
+        '<div class="amt" style="color:var(--felt)">'+fmtMoney(s.total_amount)+'</div>'+
+      '</div>';
+    });
+  }
+  const el = document.getElementById('expensesList');
+  if(todayExpenses.length===0) el.innerHTML='<div class="empty">ما في مصاريف</div>';
+  else{
+    el.innerHTML='';
+    todayExpenses.forEach(e=>{
+      const del = me.role==='owner' ? '<button class="mini" onclick="delExpense(\''+e.id+'\')" aria-label="حذف">✕</button>' : '';
+      el.innerHTML += '<div class="row">'+
+        '<div><div>'+e.name+'</div><div class="sub">'+fmtTime(e.created_at)+' — '+(e.staff||'')+'</div></div>'+
+        '<div style="display:flex;align-items:center;gap:6px"><span class="amt" style="color:var(--danger)">'+fmtMoney(e.amount)+'</span>'+del+'</div>'+
+      '</div>';
+    });
+  }
+}
+
+async function addExpense(){
+  const name = document.getElementById('expName').value.trim();
+  const amount = Number(document.getElementById('expAmount').value);
+  if(!name||!amount){ toast('اكتب البيان والمبلغ', true); return; }
+  try{
+    await db('lounge_expenses','POST',{name, amount, staff:me.name});
+    document.getElementById('expName').value=''; document.getElementById('expAmount').value='';
+    await refreshAll();
+  }catch(e){ toast('⚠️ خطأ', true); }
+}
+async function delExpense(id){
+  if(!confirm('حذف هالمصروف؟')) return;
+  try{ await db('lounge_expenses?id=eq.'+id,'DELETE'); await refreshAll(); }catch(e){ toast('⚠️ خطأ', true); }
+}
+
+function renderSummary(){
+  const t = calcDay(todaySessions, todayOrders, todayExpenses);
+  document.getElementById('sumIncome').textContent = fmtNum(t.income);
+  document.getElementById('sumExpense').textContent = fmtNum(t.exp);
+  document.getElementById('sumNet').textContent = fmtNum(t.net);
+}
+
+function chgMonth(d){
+  reportMonth = new Date(reportMonth.getFullYear(), reportMonth.getMonth()+d, 1);
+  renderReports();
+}
+async function renderReports(){
+  document.getElementById('monthTitle').textContent =
+    reportMonth.toLocaleDateString('ar-SY',{month:'long', year:'numeric'});
+  document.getElementById('monthSummary').innerHTML = '<div class="spin">جاري التحميل...</div>';
+  document.getElementById('monthDays').innerHTML = '';
+  const mr = monthRange(reportMonth);
+  try{
+    const [ss, oo, ee] = await Promise.all([
+      db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+mr[0]+'&end_at=lt.'+mr[1]),
+      db('lounge_orders?select=*&created_at=gte.'+mr[0]+'&created_at=lt.'+mr[1]),
+      db('lounge_expenses?select=*&created_at=gte.'+mr[0]+'&created_at=lt.'+mr[1])
+    ]);
+    const t = calcDay(ss, oo, ee);
+    let html = '';
+    for(const g in t.byGroup) html += '<div class="row"><div>'+g+'</div><div class="amt" style="color:var(--felt)">'+fmtMoney(t.byGroup[g])+'</div></div>';
+    html += '<div class="row"><div>أراكيل ومشروبات</div><div class="amt" style="color:var(--smoke)">'+fmtMoney(t.ordersTotal)+'</div></div>';
+    html += '<div class="row"><div><b>إجمالي دخل الشهر</b></div><div class="amt" style="color:var(--felt)">'+fmtMoney(t.income)+'</div></div>';
+    html += '<div class="row"><div>مصاريف الشهر</div><div class="amt" style="color:var(--danger)">− '+fmtMoney(t.exp)+'</div></div>';
+    html += '<div class="row"><div><b>صافي الشهر</b></div><div class="amt" style="color:var(--money)">'+fmtMoney(t.net)+'</div></div>';
+    html += '<div class="row"><div>عدد الجلسات</div><div class="amt">'+fmtNum(ss.length)+'</div></div>';
+    document.getElementById('monthSummary').innerHTML = html;
+
+    const days = {};
+    const dkey = ts => { const d=new Date(ts); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+    ss.forEach(s=>{ const k=dkey(s.end_at); (days[k]=days[k]||{s:[],o:[],e:[]}).s.push(s); });
+    oo.filter(o=>!o.session_id).forEach(o=>{ const k=dkey(o.created_at); (days[k]=days[k]||{s:[],o:[],e:[]}).o.push(o); });
+    ee.forEach(e=>{ const k=dkey(e.created_at); (days[k]=days[k]||{s:[],o:[],e:[]}).e.push(e); });
+    const keys = Object.keys(days).sort().reverse();
+    let dh = '';
+    keys.forEach(k=>{
+      const t2 = calcDay(days[k].s, days[k].o, days[k].e);
+      const dateStr = new Date(k+'T12:00:00').toLocaleDateString('ar-SY',{weekday:'long', day:'numeric', month:'long'});
+      dh += '<div class="row">'+
+        '<div><div>'+dateStr+'</div><div class="sub">دخل '+fmtMoney(t2.income)+' — مصاريف '+fmtMoney(t2.exp)+'</div></div>'+
+        '<div class="amt" style="color:var(--money)">'+fmtMoney(t2.net)+'</div>'+
+      '</div>';
+    });
+    document.getElementById('monthDays').innerHTML = dh || '<div class="empty">ما في حركة بهالشهر</div>';
+  }catch(e){
+    document.getElementById('monthSummary').innerHTML = '<div class="empty">⚠️ خطأ بالتحميل</div>';
+  }
+}
+
+async function renderSettings(){
+  const el = document.getElementById('deviceSettings');
+  el.innerHTML = devices.map(d=>'<div class="row">'+
+    '<div style="flex:1">'+d.name+'</div>'+
+    '<input type="number" inputmode="numeric" value="'+d.rate+'" style="max-width:110px" onchange="updRate(\''+d.id+'\', this.value)">'+
+    '<button class="mini" onclick="delDevice(\''+d.id+'\')" aria-label="حذف">✕</button>'+
+  '</div>').join('');
+  const pe = document.getElementById('productSettings');
+  pe.innerHTML = products.map(p=>'<div class="row">'+
+    '<div style="flex:1">'+p.name+'</div>'+
+    '<input type="number" inputmode="numeric" value="'+p.price+'" style="max-width:110px" onchange="updPrice(\''+p.id+'\', this.value)">'+
+    '<button class="mini" onclick="delProduct(\''+p.id+'\')" aria-label="حذف">✕</button>'+
+  '</div>').join('');
+  try{
+    const st = await db('lounge_staff?select=id,name,role&active=eq.true&order=created_at');
+    document.getElementById('staffSettings').innerHTML = st.map(s=>'<div class="row">'+
+      '<div style="flex:1">'+(s.role==='owner'?'👑 ':'')+s.name+'</div>'+
+      (s.role!=='owner'?('<button class="mini" onclick="delStaff(\''+s.id+'\')" aria-label="حذف">✕</button>'):'')+
+    '</div>').join('');
+  }catch(e){}
+}
+async function updRate(id, v){ try{ await db('lounge_devices?id=eq.'+id,'PATCH',{rate:Number(v)||0}); toast('✅ انحفظ'); await refreshAll(); }catch(e){ toast('⚠️ خطأ', true);} }
+async function updPrice(id, v){ try{ await db('lounge_products?id=eq.'+id,'PATCH',{price:Number(v)||0}); toast('✅ انحفظ'); await refreshAll(); }catch(e){ toast('⚠️ خطأ', true);} }
+async function addDevice(){
+  const name = document.getElementById('newDevName').value.trim();
+  const rate = Number(document.getElementById('newDevRate').value);
+  if(!name||!rate){ toast('اكتب الاسم والسعر', true); return; }
+  let grp='أخرى';
+  if(name.includes('كمبيوتر')) grp='كمبيوتر';
+  else if(name.includes('بلاي')) grp='بلايستيشن';
+  else if(name.includes('بلياردو')) grp='بلياردو';
+  else if(name.includes('ورق')) grp='طاولة ورق';
+  try{
+    await db('lounge_devices','POST',{name, grp, rate, sort:devices.length+1});
+    document.getElementById('newDevName').value=''; document.getElementById('newDevRate').value='';
+    await refreshAll(); renderSettings();
+  }catch(e){ toast('⚠️ خطأ', true); }
+}
+async function delDevice(id){
+  if(sessionOfDevice(id)){ toast('الجهاز مشغول، أنهي الجلسة أول', true); return; }
+  if(!confirm('حذف هالجهاز؟')) return;
+  try{ await db('lounge_devices?id=eq.'+id,'PATCH',{active:false}); await refreshAll(); renderSettings(); }catch(e){ toast('⚠️ خطأ', true); }
+}
+async function addProduct(){
+  const name = document.getElementById('newProdName').value.trim();
+  const price = Number(document.getElementById('newProdPrice').value);
+  if(!name||!price){ toast('اكتب الاسم والسعر', true); return; }
+  try{
+    await db('lounge_products','POST',{name, price, sort:products.length+1});
+    document.getElementById('newProdName').value=''; document.getElementById('newProdPrice').value='';
+    await refreshAll(); renderSettings();
+  }catch(e){ toast('⚠️ خطأ', true); }
+}
+async function delProduct(id){
+  if(!confirm('حذف هالصنف؟')) return;
+  try{ await db('lounge_products?id=eq.'+id,'PATCH',{active:false}); await refreshAll(); renderSettings(); }catch(e){ toast('⚠️ خطأ', true); }
+}
+async function addStaff(){
+  const name = document.getElementById('newStaffName').value.trim();
+  const pin = document.getElementById('newStaffPin').value.trim();
+  if(!name||!pin){ toast('اكتب الاسم والرقم السري', true); return; }
+  try{
+    await db('lounge_staff','POST',{name, pin, role:'staff'});
+    document.getElementById('newStaffName').value=''; document.getElementById('newStaffPin').value='';
+    renderSettings(); toast('✅ انضاف الموظف');
+  }catch(e){ toast('⚠️ خطأ', true); }
+}
+async function delStaff(id){
+  if(!confirm('حذف هالموظف؟')) return;
+  try{ await db('lounge_staff?id=eq.'+id,'PATCH',{active:false}); renderSettings(); }catch(e){ toast('⚠️ خطأ', true); }
+}
+async function changeMyPin(){
+  const pin = document.getElementById('myNewPin').value.trim();
+  if(!pin || pin.length<4){ toast('الرقم لازم يكون 4 أرقام عالأقل', true); return; }
+  try{
+    await db('lounge_staff?id=eq.'+me.id,'PATCH',{pin});
+    document.getElementById('myNewPin').value='';
+    toast('✅ تغيّر رقمك السري');
+  }catch(e){ toast('⚠️ خطأ', true); }
+}
+
+function showTab(name){
+  ['devices','sales','daily','reports','settings'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('hidden', t!==name);
+    document.getElementById('tb-'+t).classList.toggle('active', t===name);
+  });
+  if(name==='reports') renderReports();
+  if(name==='settings') renderSettings();
+}
+
+let toastTimer=null;
+function toast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+document.getElementById('todayDate').textContent =
+  new Date().toLocaleDateString('ar-SY',{weekday:'long', day:'numeric', month:'long'});
+loadLogin();
+</script>
+</body>
+</html>
