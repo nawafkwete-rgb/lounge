@@ -351,6 +351,8 @@ function effStart(naturalStartISO, scope){
   if(rp && new Date(rp) > new Date(naturalStartISO)) return rp;
   return naturalStartISO;
 }
+// توحيد صيغة الوقت لتكون آمنة داخل الروابط (بعض التواريخ بتجي بصيغة +00 وبتخرب الاستعلام)
+function tISO(v){ return encodeURIComponent(new Date(v).toISOString()); }
 async function loadResetPoints(){
   try{
     const rows = await db('lounge_resets?select=scope,reset_at&order=reset_at.desc');
@@ -409,14 +411,21 @@ async function refreshAll(){
       db('lounge_sessions?select=*&status=eq.open&order=start_at')
     ]);
     devices = ds; products = ps; openSessions = os;
-
+    // نرسم الأجهزة فوراً حتى لو فشل أي استعلام لاحق
+    renderDevices(); renderProducts();
+  }catch(e){
+    document.getElementById('deviceGroups').innerHTML = '<div class="empty">⚠️ ما قدرت أحمّل الأجهزة — تحقق من النت وجرّب تحديث الصفحة</div>';
+    return;
+  }
+  try{
     await loadResetPoints();
     const [td0,te] = dayRange(new Date());
-    const ts = effStart(td0, 'daily');
+    const ts = tISO(effStart(td0, 'daily'));
+    const teE = tISO(te);
     const [cs, co, ce] = await Promise.all([
-      db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+ts+'&end_at=lt.'+te+'&order=end_at.desc'),
-      db('lounge_orders?select=*&created_at=gte.'+ts+'&created_at=lt.'+te+'&order=created_at.desc'),
-      db('lounge_expenses?select=*&created_at=gte.'+ts+'&created_at=lt.'+te+'&order=created_at.desc')
+      db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+ts+'&end_at=lt.'+teE+'&order=end_at.desc'),
+      db('lounge_orders?select=*&created_at=gte.'+ts+'&created_at=lt.'+teE+'&order=created_at.desc'),
+      db('lounge_expenses?select=*&created_at=gte.'+ts+'&created_at=lt.'+teE+'&order=created_at.desc')
     ]);
     todaySessions = cs; todayOrders = co; todayExpenses = ce;
 
@@ -426,7 +435,7 @@ async function refreshAll(){
       const oo = await db('lounge_orders?select=*&session_id=in.('+ids+')');
       oo.forEach(o=>{ (openOrdersBySession[o.session_id] = openOrdersBySession[o.session_id]||[]).push(o); });
     }
-    renderDevices(); renderProducts(); renderSales(); renderDaily(); renderSummary();
+    renderDevices(); renderSales(); renderDaily(); renderSummary();
   }catch(e){ }
 }
 
@@ -693,11 +702,12 @@ async function renderReports(){
   if(resetPoints.monthly && new Date(resetPoints.monthly) > new Date(mr[0]) && new Date(resetPoints.monthly) < new Date(mr[1])){
     mLow = resetPoints.monthly;
   }
+  const mL = tISO(mLow), mH = tISO(mr[1]);
   try{
     const [ss, oo, ee] = await Promise.all([
-      db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+mLow+'&end_at=lt.'+mr[1]),
-      db('lounge_orders?select=*&created_at=gte.'+mLow+'&created_at=lt.'+mr[1]),
-      db('lounge_expenses?select=*&created_at=gte.'+mLow+'&created_at=lt.'+mr[1])
+      db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+mL+'&end_at=lt.'+mH),
+      db('lounge_orders?select=*&created_at=gte.'+mL+'&created_at=lt.'+mH),
+      db('lounge_expenses?select=*&created_at=gte.'+mL+'&created_at=lt.'+mH)
     ]);
     const t = calcDay(ss, oo, ee);
     let html = '';
@@ -715,11 +725,11 @@ async function renderReports(){
       if(reportMonth.getFullYear()===now.getFullYear() && reportMonth.getMonth()===now.getMonth()){
         let wLow = weekStart(now).toISOString();
         if(resetPoints.weekly && new Date(resetPoints.weekly) > new Date(wLow)) wLow = resetPoints.weekly;
-        const wHigh = new Date().toISOString();
+        const wL = tISO(wLow), wH = tISO(new Date().toISOString());
         const [wss, woo, wee] = await Promise.all([
-          db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+wLow+'&end_at=lt.'+wHigh),
-          db('lounge_orders?select=*&created_at=gte.'+wLow+'&created_at=lt.'+wHigh),
-          db('lounge_expenses?select=*&created_at=gte.'+wLow+'&created_at=lt.'+wHigh)
+          db('lounge_sessions?select=*&status=eq.closed&end_at=gte.'+wL+'&end_at=lt.'+wH),
+          db('lounge_orders?select=*&created_at=gte.'+wL+'&created_at=lt.'+wH),
+          db('lounge_expenses?select=*&created_at=gte.'+wL+'&created_at=lt.'+wH)
         ]);
         const wt = calcDay(wss, woo, wee);
         const wk = document.createElement('div');
